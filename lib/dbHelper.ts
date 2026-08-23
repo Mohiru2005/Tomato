@@ -35,9 +35,28 @@ export function getWritableFilePath(filename: string): string {
   return localFile;
 }
 
+function getRedisRestCredentials() {
+  let url = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
+  let token = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
+
+  if ((!url || !token) && process.env.REDIS_URL) {
+    try {
+      const parsed = new URL(process.env.REDIS_URL);
+      const host = parsed.hostname;
+      const password = parsed.password;
+      if (host && password) {
+        const restHost = host.replace('.db.redis.io', '.upstash.io');
+        url = restHost.startsWith('http') ? restHost : `https://${restHost}`;
+        token = password;
+      }
+    } catch {}
+  }
+
+  return { url, token };
+}
+
 export async function readJsonData<T>(filename: string, defaultValue: T): Promise<T> {
-  const url = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
+  const { url, token } = getRedisRestCredentials();
 
   if (url && token) {
     try {
@@ -55,6 +74,28 @@ export async function readJsonData<T>(filename: string, defaultValue: T): Promis
     }
   }
 
+  // JSONBin.io fallback
+  const masterKey = process.env.JSONBIN_MASTER_KEY;
+  const keyName = filename.replace('.json', '').toUpperCase();
+  const binId = process.env[`JSONBIN_${keyName}_BIN_ID`];
+
+  if (masterKey && binId) {
+    try {
+      const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, {
+        headers: {
+          'X-Master-Key': masterKey,
+        },
+        cache: 'no-store',
+      });
+      const json = await res.json();
+      if (json.record) {
+        return json.record;
+      }
+    } catch (err) {
+      console.warn('Failed to read from JSONBin:', err);
+    }
+  }
+
   // Fallback to disk / /tmp
   try {
     const filePath = getWritableFilePath(filename);
@@ -69,8 +110,7 @@ export async function readJsonData<T>(filename: string, defaultValue: T): Promis
 }
 
 export async function writeJsonData<T>(filename: string, data: T): Promise<void> {
-  const url = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
+  const { url, token } = getRedisRestCredentials();
   const jsonStr = JSON.stringify(data, null, 2);
 
   if (url && token) {
@@ -86,6 +126,26 @@ export async function writeJsonData<T>(filename: string, data: T): Promise<void>
       });
     } catch (err) {
       console.warn('Failed to write to Cloud KV:', err);
+    }
+  }
+
+  // JSONBin.io fallback
+  const masterKey = process.env.JSONBIN_MASTER_KEY;
+  const keyName = filename.replace('.json', '').toUpperCase();
+  const binId = process.env[`JSONBIN_${keyName}_BIN_ID`];
+
+  if (masterKey && binId) {
+    try {
+      await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Master-Key': masterKey,
+        },
+        body: JSON.stringify(data),
+      });
+    } catch (err) {
+      console.warn('Failed to write to JSONBin:', err);
     }
   }
 
