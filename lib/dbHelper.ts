@@ -116,7 +116,7 @@ export async function writeJsonData<T>(filename: string, data: T): Promise<void>
   if (url && token) {
     try {
       const key = `tomato_${filename.replace('.json', '')}`;
-      await fetch(`${url}/set/${key}`, {
+      const res = await fetch(`${url}/set/${key}`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -124,6 +124,12 @@ export async function writeJsonData<T>(filename: string, data: T): Promise<void>
         },
         body: JSON.stringify(jsonStr),
       });
+
+      if (!res.ok) {
+        await fetch(`${url}/set/${key}/${encodeURIComponent(jsonStr)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      }
     } catch (err) {
       console.warn('Failed to write to Cloud KV:', err);
     }
