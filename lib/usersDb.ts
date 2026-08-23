@@ -1,5 +1,5 @@
 import fs from 'fs';
-import path from 'path';
+import { getWritableFilePath } from './dbHelper';
 
 export interface UserRecord {
   username: string;
@@ -9,16 +9,12 @@ export interface UserRecord {
   statusMsg?: string;
 }
 
-const dataFilePath = path.join(process.cwd(), 'data', 'users.json');
 let cachedUsers: UserRecord[] | null = null;
 let lastMtime = 0;
 
 function ensureDbExists(): UserRecord[] {
+  const dataFilePath = getWritableFilePath('users.json');
   try {
-    const dirPath = path.dirname(dataFilePath);
-    if (!fs.existsSync(dirPath)) {
-      fs.mkdirSync(dirPath, { recursive: true });
-    }
     if (!fs.existsSync(dataFilePath)) {
       const initial: UserRecord[] = [
         {
@@ -31,12 +27,14 @@ function ensureDbExists(): UserRecord[] {
       ];
       fs.writeFileSync(dataFilePath, JSON.stringify(initial, null, 2), 'utf-8');
       cachedUsers = initial;
-      lastMtime = fs.statSync(dataFilePath).mtimeMs;
+      try { lastMtime = fs.statSync(dataFilePath).mtimeMs; } catch {}
       return initial;
     }
 
-    const stat = fs.statSync(dataFilePath);
-    if (cachedUsers && stat.mtimeMs === lastMtime) {
+    let mtimeMs = 0;
+    try { mtimeMs = fs.statSync(dataFilePath).mtimeMs; } catch {}
+
+    if (cachedUsers && mtimeMs === lastMtime && mtimeMs > 0) {
       return cachedUsers;
     }
 
@@ -54,9 +52,9 @@ function ensureDbExists(): UserRecord[] {
 
     if (updated) {
       fs.writeFileSync(dataFilePath, JSON.stringify(normalized, null, 2), 'utf-8');
-      lastMtime = fs.statSync(dataFilePath).mtimeMs;
+      try { lastMtime = fs.statSync(dataFilePath).mtimeMs; } catch {}
     } else {
-      lastMtime = stat.mtimeMs;
+      lastMtime = mtimeMs;
     }
 
     cachedUsers = normalized;
@@ -74,6 +72,7 @@ export function getUsers(): UserRecord[] {
 export function saveUser(username: string, pin: string): { success: boolean; user?: UserRecord; error?: string } {
   const users = ensureDbExists();
   const lowerName = username.toLowerCase();
+  const dataFilePath = getWritableFilePath('users.json');
   
   const existing = users.find((u) => u.username.toLowerCase() === lowerName);
   if (existing) {
@@ -92,7 +91,7 @@ export function saveUser(username: string, pin: string): { success: boolean; use
   users.push(newUser);
   fs.writeFileSync(dataFilePath, JSON.stringify(users, null, 2), 'utf-8');
   cachedUsers = users;
-  lastMtime = fs.statSync(dataFilePath).mtimeMs;
+  try { lastMtime = fs.statSync(dataFilePath).mtimeMs; } catch {}
   return { success: true, user: newUser };
 }
 
@@ -108,19 +107,21 @@ export function validateUser(username: string, pin: string): UserRecord | null {
 export function updateUserStatus(username: string, statusMsg: string): boolean {
   const users = ensureDbExists();
   const lowerName = username.toLowerCase();
+  const dataFilePath = getWritableFilePath('users.json');
   const user = users.find((u) => u.username.toLowerCase() === lowerName);
   if (!user) return false;
 
   user.statusMsg = statusMsg;
   fs.writeFileSync(dataFilePath, JSON.stringify(users, null, 2), 'utf-8');
   cachedUsers = users;
-  lastMtime = fs.statSync(dataFilePath).mtimeMs;
+  try { lastMtime = fs.statSync(dataFilePath).mtimeMs; } catch {}
   return true;
 }
 
 export function deleteUser(username: string): boolean {
   const users = ensureDbExists();
   const lowerName = username.toLowerCase();
+  const dataFilePath = getWritableFilePath('users.json');
   
   if (lowerName === 'admin') {
     return false;
@@ -133,6 +134,6 @@ export function deleteUser(username: string): boolean {
 
   fs.writeFileSync(dataFilePath, JSON.stringify(filtered, null, 2), 'utf-8');
   cachedUsers = filtered;
-  lastMtime = fs.statSync(dataFilePath).mtimeMs;
+  try { lastMtime = fs.statSync(dataFilePath).mtimeMs; } catch {}
   return true;
 }

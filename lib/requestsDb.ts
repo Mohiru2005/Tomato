@@ -1,5 +1,5 @@
 import fs from 'fs';
-import path from 'path';
+import { getWritableFilePath } from './dbHelper';
 
 export interface FriendRequest {
   id: string;
@@ -9,32 +9,30 @@ export interface FriendRequest {
   timestamp: string;
 }
 
-const dataFilePath = path.join(process.cwd(), 'data', 'requests.json');
 let cachedRequests: FriendRequest[] | null = null;
 let lastMtime = 0;
 
 function ensureDbExists(): FriendRequest[] {
+  const dataFilePath = getWritableFilePath('requests.json');
   try {
-    const dirPath = path.dirname(dataFilePath);
-    if (!fs.existsSync(dirPath)) {
-      fs.mkdirSync(dirPath, { recursive: true });
-    }
     if (!fs.existsSync(dataFilePath)) {
       fs.writeFileSync(dataFilePath, '[]', 'utf-8');
       cachedRequests = [];
-      lastMtime = fs.statSync(dataFilePath).mtimeMs;
+      try { lastMtime = fs.statSync(dataFilePath).mtimeMs; } catch {}
       return [];
     }
 
-    const stat = fs.statSync(dataFilePath);
-    if (cachedRequests && stat.mtimeMs === lastMtime) {
+    let mtimeMs = 0;
+    try { mtimeMs = fs.statSync(dataFilePath).mtimeMs; } catch {}
+
+    if (cachedRequests && mtimeMs === lastMtime && mtimeMs > 0) {
       return cachedRequests;
     }
 
     const content = fs.readFileSync(dataFilePath, 'utf-8');
     const parsed: FriendRequest[] = JSON.parse(content);
     cachedRequests = parsed;
-    lastMtime = stat.mtimeMs;
+    lastMtime = mtimeMs;
     return parsed;
   } catch {
     return cachedRequests || [];
@@ -42,6 +40,7 @@ function ensureDbExists(): FriendRequest[] {
 }
 
 function save(requests: FriendRequest[]) {
+  const dataFilePath = getWritableFilePath('requests.json');
   fs.writeFileSync(dataFilePath, JSON.stringify(requests, null, 2), 'utf-8');
   cachedRequests = requests;
   try {

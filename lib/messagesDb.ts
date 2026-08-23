@@ -1,5 +1,5 @@
 import fs from 'fs';
-import path from 'path';
+import { getWritableFilePath } from './dbHelper';
 
 export interface ChatMessage {
   id: string;
@@ -11,32 +11,30 @@ export interface ChatMessage {
   reactions?: { emoji: string; users: string[] }[];
 }
 
-const dataFilePath = path.join(process.cwd(), 'data', 'messages.json');
 let cachedMessages: ChatMessage[] | null = null;
 let lastMtime = 0;
 
 function ensureDbExists(): ChatMessage[] {
+  const dataFilePath = getWritableFilePath('messages.json');
   try {
-    const dirPath = path.dirname(dataFilePath);
-    if (!fs.existsSync(dirPath)) {
-      fs.mkdirSync(dirPath, { recursive: true });
-    }
     if (!fs.existsSync(dataFilePath)) {
       fs.writeFileSync(dataFilePath, '[]', 'utf-8');
       cachedMessages = [];
-      lastMtime = fs.statSync(dataFilePath).mtimeMs;
+      try { lastMtime = fs.statSync(dataFilePath).mtimeMs; } catch {}
       return [];
     }
 
-    const stat = fs.statSync(dataFilePath);
-    if (cachedMessages && stat.mtimeMs === lastMtime) {
+    let mtimeMs = 0;
+    try { mtimeMs = fs.statSync(dataFilePath).mtimeMs; } catch {}
+
+    if (cachedMessages && mtimeMs === lastMtime && mtimeMs > 0) {
       return cachedMessages;
     }
 
     const content = fs.readFileSync(dataFilePath, 'utf-8');
     const parsed: ChatMessage[] = JSON.parse(content);
     cachedMessages = parsed;
-    lastMtime = stat.mtimeMs;
+    lastMtime = mtimeMs;
     return parsed;
   } catch {
     return cachedMessages || [];
@@ -44,6 +42,7 @@ function ensureDbExists(): ChatMessage[] {
 }
 
 function save(messages: ChatMessage[]) {
+  const dataFilePath = getWritableFilePath('messages.json');
   fs.writeFileSync(dataFilePath, JSON.stringify(messages, null, 2), 'utf-8');
   cachedMessages = messages;
   try {
