@@ -228,17 +228,36 @@ export default function UserDashboard({ username }: UserDashboardProps) {
   }
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-rose-50 via-white to-pink-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 transition-colors">
+    <div className="flex flex-col md:flex-row h-screen bg-gradient-to-br from-rose-50 via-white to-pink-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 transition-colors">
       <AnimatePresence>
         {toast && <Toast key="toast" message={toast.message} type={toast.type} />}
       </AnimatePresence>
 
-      {/* ── Left Sidebar ── */}
+      {/* ── Mobile Top Header (Visible on Mobile only) ── */}
+      <div className="md:hidden flex items-center justify-between px-4 py-3 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-b border-rose-100/60 dark:border-slate-800 z-30">
+        <motion.button
+          type="button"
+          onClick={handleLogout}
+          whileTap={{ scale: 0.95 }}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-red-600 bg-slate-100 dark:bg-slate-800 rounded-xl"
+        >
+          <LogOut className="w-3.5 h-3.5" /> Log Out
+        </motion.button>
+
+        <div className="flex items-center gap-2">
+          <span className="font-black text-sm text-slate-900 dark:text-white">{username}</span>
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-rose-400 to-pink-500 flex items-center justify-center font-black text-white text-xs shadow-md">
+            {username.charAt(0).toUpperCase()}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Desktop Left Sidebar (Visible on Desktop only) ── */}
       <motion.div
         initial={{ opacity: 0, x: -24 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-        className="w-72 flex-shrink-0 border-r border-white/60 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl flex flex-col"
+        className="hidden md:flex w-72 flex-shrink-0 border-r border-white/60 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl flex-col"
       >
         {/* Identity & Top-Left Logout */}
         <div className="px-5 pt-4 pb-3 border-b border-rose-100/40 dark:border-slate-800 flex items-center justify-between">
@@ -325,8 +344,34 @@ export default function UserDashboard({ username }: UserDashboardProps) {
         </nav>
       </motion.div>
 
+      {/* ── Mobile Bottom Navigation Bar (Visible on Mobile only) ── */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-rose-100/60 dark:border-slate-800 flex items-center justify-around px-2 py-2 shadow-lg">
+        {navItems.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => setActiveSection(item.id)}
+            className={`flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl transition-all relative ${
+              activeSection === item.id
+                ? 'text-rose-600 dark:text-rose-400 font-bold'
+                : 'text-slate-400 dark:text-slate-500 font-medium'
+            }`}
+          >
+            <div className="relative">
+              {item.icon}
+              {item.badge !== undefined && item.badge > 0 && (
+                <span className="absolute -top-1.5 -right-2 w-4 h-4 bg-rose-500 text-white text-[9px] font-black rounded-full flex items-center justify-center animate-pulse">
+                  {item.badge}
+                </span>
+              )}
+            </div>
+            <span className="text-[10px]">{item.label}</span>
+          </button>
+        ))}
+      </div>
+
       {/* ── Right Panel ── */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden pb-16 md:pb-0">
         <AnimatePresence mode="wait">
 
           {/* ── PROFILE ── */}
