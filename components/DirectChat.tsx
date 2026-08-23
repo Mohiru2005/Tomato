@@ -46,8 +46,10 @@ export default function DirectChat({ currentUser, partnerUser, onBack }: DirectC
   const inputRef = useRef<HTMLInputElement>(null);
   const prevCountRef = useRef(0);
 
-  const scrollToBottom = useCallback(() => {
-    setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 60);
+  const scrollToBottom = useCallback((instant = false) => {
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: instant ? 'auto' : 'smooth' });
+    }, 40);
   }, []);
 
   const fetchMessages = useCallback(async () => {
@@ -59,14 +61,12 @@ export default function DirectChat({ currentUser, partnerUser, onBack }: DirectC
       const data = await res.json();
       if (data.success && Array.isArray(data.messages)) {
         setMessages((prev) => {
-          // Compare message count or reaction updates
           const updatedJson = JSON.stringify(data.messages);
           const prevJson = JSON.stringify(prev);
           if (updatedJson !== prevJson) {
-            if (data.messages.length > prevCountRef.current) {
-              prevCountRef.current = data.messages.length;
-              scrollToBottom();
-            }
+            const isInitialLoad = prevCountRef.current === 0;
+            prevCountRef.current = data.messages.length;
+            scrollToBottom(isInitialLoad);
             return data.messages;
           }
           return prev;
@@ -82,6 +82,12 @@ export default function DirectChat({ currentUser, partnerUser, onBack }: DirectC
     const interval = setInterval(fetchMessages, 2000);
     return () => clearInterval(interval);
   }, [currentUser, partnerUser, fetchMessages]);
+
+  useEffect(() => {
+    if (messages.length > 0) {
+      scrollToBottom(true);
+    }
+  }, [messages.length, scrollToBottom]);
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
