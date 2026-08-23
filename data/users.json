@@ -5,19 +5,5 @@
     "role": "admin",
     "createdAt": "2026-08-23T00:00:00.000Z",
     "statusMsg": "System Administrator"
-  },
-  {
-    "username": "pavan",
-    "pin": "1234",
-    "role": "user",
-    "createdAt": "2026-08-23T12:00:00.000Z",
-    "statusMsg": "Available"
-  },
-  {
-    "username": "mohith",
-    "pin": "1234",
-    "role": "user",
-    "createdAt": "2026-08-23T12:00:00.000Z",
-    "statusMsg": "Available"
   }
 ]
