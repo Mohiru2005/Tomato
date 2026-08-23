@@ -1,10 +1,28 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { ThemeProvider } from '@/components/ThemeProvider';
 
 export const metadata: Metadata = {
-  title: 'Welcome to Tomato Org',
-  description: 'Low latency and end-to-end encrypted messaging platform',
+  title: 'Tomato Messenger',
+  description: 'Low latency real-time messaging platform',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Tomato',
+  },
+  formatDetection: {
+    telephone: false,
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#f43f5e',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({
@@ -14,7 +32,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="h-full">
-      <body className="h-full font-sans bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 antialiased transition-colors">
+      <head>
+        <link rel="apple-touch-icon" href="/icon.svg" />
+      </head>
+      <body className="h-full font-sans bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 antialiased transition-colors overscroll-none">
         <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>

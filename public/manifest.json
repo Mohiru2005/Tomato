@@ -1,0 +1,16 @@
+{
+  "name": "Tomato Messenger",
+  "short_name": "Tomato",
+  "description": "Low latency real-time messaging platform",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#f43f5e",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

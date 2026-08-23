@@ -12,6 +12,29 @@
   }
 }
 
+/* ── Mobile PWA & Touch Enhancements ── */
+@supports (padding-top: env(safe-area-inset-top)) {
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Prevent double-tap zoom & tap highlights on mobile */
+button, a, input, select {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* Prevent text callouts on long press for native app feel */
+.no-callout {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 /* ── Scrollbar ── */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -66,6 +89,3 @@
 
 .bubble-right { animation: bubble-in-right 0.2s ease-out; }
 .bubble-left  { animation: bubble-in-left  0.2s ease-out; }
-
-
-

@@ -5,6 +5,7 @@ export interface ChatMessage {
   fromUser: string;
   toUser: string;
   text: string;
+  attachment?: string; // Data URL or Image URL
   timestamp: string; // ISO string
   read?: boolean;
   reactions?: { emoji: string; users: string[] }[];
@@ -44,13 +45,14 @@ export async function getConversation(userA: string, userB: string, currentReade
   return conversation;
 }
 
-export async function addMessage(fromUser: string, toUser: string, text: string): Promise<ChatMessage> {
+export async function addMessage(fromUser: string, toUser: string, text: string, attachment?: string): Promise<ChatMessage> {
   const messages = await ensureDbExists();
   const newMsg: ChatMessage = {
     id: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
     fromUser,
     toUser,
     text,
+    attachment: attachment || undefined,
     timestamp: new Date().toISOString(),
     read: false,
     reactions: [],
@@ -109,7 +111,7 @@ export async function deleteAllMessagesForUser(username: string): Promise<void> 
   const filtered = messages.filter(
     (m) => m.fromUser.toLowerCase() !== lower && m.toUser.toLowerCase() !== lower
   );
-  await save(filtered);
+  save(filtered);
 }
 
 export async function getConversationPartners(username: string): Promise<string[]> {

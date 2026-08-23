@@ -45,13 +45,13 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { fromUser, toUser, text } = body;
+    const { fromUser, toUser, text, attachment } = body;
 
-    if (!fromUser || !toUser || !text?.trim()) {
-      return NextResponse.json({ success: false, error: 'fromUser, toUser and text required.' }, { status: 400 });
+    if (!fromUser || !toUser || (!text?.trim() && !attachment)) {
+      return NextResponse.json({ success: false, error: 'fromUser, toUser and text/attachment required.' }, { status: 400 });
     }
 
-    const newMessage = await addMessage(fromUser.trim(), toUser.trim(), text.trim());
+    const newMessage = await addMessage(fromUser.trim(), toUser.trim(), text ? text.trim() : '', attachment);
     return NextResponse.json({ success: true, message: newMessage });
   } catch {
     return NextResponse.json({ success: false, error: 'Failed to send message.' }, { status: 500 });
