@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import { createClient } from '@supabase/supabase-js';
 
 export function getWritableFilePath(filename: string): string {
   const localDir = path.join(process.cwd(), 'data');
@@ -35,6 +36,19 @@ export function getWritableFilePath(filename: string): string {
   return localFile;
 }
 
+function getSupabaseClient() {
+  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (url && key) {
+    try {
+      return createClient(url, key);
+    } catch (e) {
+      console.warn('Supabase client creation error:', e);
+    }
+  }
+  return null;
+}
+
 function getRedisRestCredentials() {
   let url = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
   let token = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
@@ -56,11 +70,30 @@ function getRedisRestCredentials() {
 }
 
 export async function readJsonData<T>(filename: string, defaultValue: T): Promise<T> {
-  const { url, token } = getRedisRestCredentials();
+  const id = filename.replace('.json', '');
 
+  // 1. Supabase Cloud Database Support
+  const supabase = getSupabaseClient();
+  if (supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('tomato_store')
+        .select('content')
+        .eq('id', id)
+        .single();
+      if (!error && data && data.content) {
+        return typeof data.content === 'string' ? JSON.parse(data.content) : (data.content as T);
+      }
+    } catch (err) {
+      console.warn('Failed to read from Supabase:', err);
+    }
+  }
+
+  // 2. Upstash Redis / Vercel KV REST API
+  const { url, token } = getRedisRestCredentials();
   if (url && token) {
     try {
-      const key = `tomato_${filename.replace('.json', '')}`;
+      const key = `tomato_${id}`;
       const res = await fetch(`${url}/get/${key}`, {
         headers: { Authorization: `Bearer ${token}` },
         cache: 'no-store',
@@ -74,29 +107,7 @@ export async function readJsonData<T>(filename: string, defaultValue: T): Promis
     }
   }
 
-  // JSONBin.io fallback
-  const masterKey = process.env.JSONBIN_MASTER_KEY;
-  const keyName = filename.replace('.json', '').toUpperCase();
-  const binId = process.env[`JSONBIN_${keyName}_BIN_ID`];
-
-  if (masterKey && binId) {
-    try {
-      const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, {
-        headers: {
-          'X-Master-Key': masterKey,
-        },
-        cache: 'no-store',
-      });
-      const json = await res.json();
-      if (json.record) {
-        return json.record;
-      }
-    } catch (err) {
-      console.warn('Failed to read from JSONBin:', err);
-    }
-  }
-
-  // Fallback to disk / /tmp
+  // 3. Fallback to disk / /tmp
   try {
     const filePath = getWritableFilePath(filename);
     if (!fs.existsSync(filePath)) {
@@ -110,12 +121,27 @@ export async function readJsonData<T>(filename: string, defaultValue: T): Promis
 }
 
 export async function writeJsonData<T>(filename: string, data: T): Promise<void> {
+  const id = filename.replace('.json', '');
+
+  // 1. Supabase Cloud Database Support
+  const supabase = getSupabaseClient();
+  if (supabase) {
+    try {
+      await supabase
+        .from('tomato_store')
+        .upsert({ id, content: data }, { onConflict: 'id' });
+    } catch (err) {
+      console.warn('Failed to write to Supabase:', err);
+    }
+  }
+
+  // 2. Upstash Redis / Vercel KV REST API
   const { url, token } = getRedisRestCredentials();
   const jsonStr = JSON.stringify(data, null, 2);
 
   if (url && token) {
     try {
-      const key = `tomato_${filename.replace('.json', '')}`;
+      const key = `tomato_${id}`;
       const res = await fetch(`${url}/set/${key}`, {
         method: 'POST',
         headers: {
@@ -135,27 +161,7 @@ export async function writeJsonData<T>(filename: string, data: T): Promise<void>
     }
   }
 
-  // JSONBin.io fallback
-  const masterKey = process.env.JSONBIN_MASTER_KEY;
-  const keyName = filename.replace('.json', '').toUpperCase();
-  const binId = process.env[`JSONBIN_${keyName}_BIN_ID`];
-
-  if (masterKey && binId) {
-    try {
-      await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Master-Key': masterKey,
-        },
-        body: JSON.stringify(data),
-      });
-    } catch (err) {
-      console.warn('Failed to write to JSONBin:', err);
-    }
-  }
-
-  // Fallback to disk / /tmp
+  // 3. Fallback to disk / /tmp
   try {
     const filePath = getWritableFilePath(filename);
     fs.writeFileSync(filePath, jsonStr, 'utf-8');
