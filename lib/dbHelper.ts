@@ -38,10 +38,17 @@ export function getWritableFilePath(filename: string): string {
 
 function getSupabaseClient() {
   const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const key =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.SUPABASE_SECRET_KEY ||
+    process.env.SUPABASE_ANON_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
   if (url && key) {
     try {
-      return createClient(url, key);
+      return createClient(url, key, {
+        auth: { persistSession: false },
+      });
     } catch (e) {
       console.warn('Supabase client creation error:', e);
     }
@@ -82,14 +89,14 @@ export async function readJsonData<T>(filename: string, defaultValue: T): Promis
         .eq('id', id)
         .maybeSingle();
 
-      if (data && data.content) {
+      if (data && data.content !== undefined && data.content !== null) {
         return typeof data.content === 'string' ? JSON.parse(data.content) : (data.content as T);
       }
-      if (!error) {
-        return defaultValue;
+      if (error) {
+        console.error('Supabase read error:', error.message, error.details);
       }
     } catch (err) {
-      console.warn('Failed to read from Supabase:', err);
+      console.error('Failed to read from Supabase:', err);
     }
   }
 
@@ -131,14 +138,22 @@ export async function writeJsonData<T>(filename: string, data: T): Promise<void>
   const supabase = getSupabaseClient();
   if (supabase) {
     try {
+      const payload = { id, content: data, updated_at: new Date().toISOString() };
       const { error } = await supabase
         .from('tomato_store')
-        .upsert({ id, content: data }, { onConflict: 'id' });
+        .upsert(payload, { onConflict: 'id' });
+
       if (error) {
-        console.warn('Supabase upsert warning:', error.message);
+        console.error('Supabase upsert error:', error.message, error.details, error.code);
+        // Fallback retry with delete + insert
+        await supabase.from('tomato_store').delete().eq('id', id);
+        const { error: insertErr } = await supabase.from('tomato_store').insert(payload);
+        if (insertErr) {
+          console.error('Supabase insert fallback error:', insertErr.message);
+        }
       }
     } catch (err) {
-      console.warn('Failed to write to Supabase:', err);
+      console.error('Failed to write to Supabase:', err);
     }
   }
 
@@ -149,20 +164,14 @@ export async function writeJsonData<T>(filename: string, data: T): Promise<void>
   if (url && token) {
     try {
       const key = `tomato_${id}`;
-      const res = await fetch(`${url}/set/${key}`, {
+      await fetch(`${url}/set/${key}`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(jsonStr),
+        body: JSON.stringify([jsonStr]),
       });
-
-      if (!res.ok) {
-        await fetch(`${url}/set/${key}/${encodeURIComponent(jsonStr)}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-      }
     } catch (err) {
       console.warn('Failed to write to Cloud KV:', err);
     }
@@ -173,6 +182,6 @@ export async function writeJsonData<T>(filename: string, data: T): Promise<void>
     const filePath = getWritableFilePath(filename);
     fs.writeFileSync(filePath, jsonStr, 'utf-8');
   } catch (err) {
-    console.error('Failed to write to local disk:', err);
+    console.warn('Failed to write to local disk fallback:', err);
   }
 }
