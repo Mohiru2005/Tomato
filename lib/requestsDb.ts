@@ -1,5 +1,4 @@
-import fs from 'fs';
-import { getWritableFilePath } from './dbHelper';
+import { readJsonData, writeJsonData } from './dbHelper';
 
 export interface FriendRequest {
   id: string;
@@ -9,51 +8,20 @@ export interface FriendRequest {
   timestamp: string;
 }
 
-let cachedRequests: FriendRequest[] | null = null;
-let lastMtime = 0;
-
-function ensureDbExists(): FriendRequest[] {
-  const dataFilePath = getWritableFilePath('requests.json');
-  try {
-    if (!fs.existsSync(dataFilePath)) {
-      fs.writeFileSync(dataFilePath, '[]', 'utf-8');
-      cachedRequests = [];
-      try { lastMtime = fs.statSync(dataFilePath).mtimeMs; } catch {}
-      return [];
-    }
-
-    let mtimeMs = 0;
-    try { mtimeMs = fs.statSync(dataFilePath).mtimeMs; } catch {}
-
-    if (cachedRequests && mtimeMs === lastMtime && mtimeMs > 0) {
-      return cachedRequests;
-    }
-
-    const content = fs.readFileSync(dataFilePath, 'utf-8');
-    const parsed: FriendRequest[] = JSON.parse(content);
-    cachedRequests = parsed;
-    lastMtime = mtimeMs;
-    return parsed;
-  } catch {
-    return cachedRequests || [];
-  }
+async function ensureDbExists(): Promise<FriendRequest[]> {
+  return await readJsonData<FriendRequest[]>('requests.json', []);
 }
 
-function save(requests: FriendRequest[]) {
-  const dataFilePath = getWritableFilePath('requests.json');
-  fs.writeFileSync(dataFilePath, JSON.stringify(requests, null, 2), 'utf-8');
-  cachedRequests = requests;
-  try {
-    lastMtime = fs.statSync(dataFilePath).mtimeMs;
-  } catch {}
+async function save(requests: FriendRequest[]): Promise<void> {
+  await writeJsonData('requests.json', requests);
 }
 
-export function getRequests(): FriendRequest[] {
-  return ensureDbExists();
+export async function getRequests(): Promise<FriendRequest[]> {
+  return await ensureDbExists();
 }
 
-export function sendRequest(fromUser: string, toUser: string): { success: boolean; request?: FriendRequest; error?: string } {
-  const requests = ensureDbExists();
+export async function sendRequest(fromUser: string, toUser: string): Promise<{ success: boolean; request?: FriendRequest; error?: string }> {
+  const requests = await ensureDbExists();
 
   if (fromUser.toLowerCase() === toUser.toLowerCase()) {
     return { success: false, error: 'Cannot send a friend request to yourself.' };
@@ -79,21 +47,21 @@ export function sendRequest(fromUser: string, toUser: string): { success: boolea
   };
 
   requests.push(newReq);
-  save(requests);
+  await save(requests);
   return { success: true, request: newReq };
 }
 
-export function respondToRequest(id: string, status: 'accepted' | 'rejected'): boolean {
-  const requests = ensureDbExists();
+export async function respondToRequest(id: string, status: 'accepted' | 'rejected'): Promise<boolean> {
+  const requests = await ensureDbExists();
   const idx = requests.findIndex((r) => r.id === id);
   if (idx === -1) return false;
   requests[idx].status = status;
-  save(requests);
+  await save(requests);
   return true;
 }
 
-export function getFriendsOf(username: string): string[] {
-  const requests = ensureDbExists();
+export async function getFriendsOf(username: string): Promise<string[]> {
+  const requests = await ensureDbExists();
   const userLower = username.toLowerCase();
   const friends = new Set<string>();
 
@@ -110,22 +78,22 @@ export function getFriendsOf(username: string): string[] {
   return Array.from(friends);
 }
 
-export function getIncomingRequests(username: string): FriendRequest[] {
-  const requests = ensureDbExists();
+export async function getIncomingRequests(username: string): Promise<FriendRequest[]> {
+  const requests = await ensureDbExists();
   return requests.filter(
     (r) => r.toUser.toLowerCase() === username.toLowerCase() && r.status === 'pending'
   );
 }
 
-export function getSentRequests(username: string): FriendRequest[] {
-  const requests = ensureDbExists();
+export async function getSentRequests(username: string): Promise<FriendRequest[]> {
+  const requests = await ensureDbExists();
   return requests.filter(
     (r) => r.fromUser.toLowerCase() === username.toLowerCase()
   );
 }
 
-export function areFriends(userA: string, userB: string): boolean {
-  const requests = ensureDbExists();
+export async function areFriends(userA: string, userB: string): Promise<boolean> {
+  const requests = await ensureDbExists();
   return requests.some(
     (r) =>
       r.status === 'accepted' &&
@@ -134,11 +102,11 @@ export function areFriends(userA: string, userB: string): boolean {
   );
 }
 
-export function deleteAllRequestsForUser(username: string): void {
-  const requests = ensureDbExists();
+export async function deleteAllRequestsForUser(username: string): Promise<void> {
+  const requests = await ensureDbExists();
   const lower = username.toLowerCase();
   const filtered = requests.filter(
     (r) => r.fromUser.toLowerCase() !== lower && r.toUser.toLowerCase() !== lower
   );
-  save(filtered);
+  await save(filtered);
 }

@@ -41,76 +41,75 @@ async function runQATests() {
   // --- 1. USERS DB QA TESTS ---
   console.log('📌 1. Testing Users Database Layer');
   
-  // Test User Creation
   const testUserA = `qa_test_user_a_${Date.now()}`;
   const testUserB = `qa_test_user_b_${Date.now()}`;
 
-  const resA = saveUser(testUserA, '1234');
+  const resA = await saveUser(testUserA, '1234');
   assert(resA.success === true && resA.user?.username === testUserA, 'Save User A');
 
-  const resB = saveUser(testUserB, '5678');
+  const resB = await saveUser(testUserB, '5678');
   assert(resB.success === true && resB.user?.username === testUserB, 'Save User B');
 
   // Duplicate User Protection
-  const resDup = saveUser(testUserA, '0000');
+  const resDup = await saveUser(testUserA, '0000');
   assert(resDup.success === false, 'Duplicate Username Protection');
 
   // Validate Credentials
-  const valid = validateUser(testUserA, '1234');
+  const valid = await validateUser(testUserA, '1234');
   assert(valid !== null && valid.username === testUserA, 'Validate Valid Credentials');
 
-  const invalid = validateUser(testUserA, 'wrong_pin');
+  const invalid = await validateUser(testUserA, 'wrong_pin');
   assert(invalid === null, 'Reject Invalid Credentials');
 
   // Update Status
-  const statusUpdated = updateUserStatus(testUserA, 'Testing QA Status');
+  const statusUpdated = await updateUserStatus(testUserA, 'Testing QA Status');
   assert(statusUpdated === true, 'Update User Status Message');
 
   // --- 2. FRIEND REQUESTS DB QA TESTS ---
   console.log('\n📌 2. Testing Friend Requests Layer');
 
-  const reqRes = sendRequest(testUserA, testUserB);
+  const reqRes = await sendRequest(testUserA, testUserB);
   assert(reqRes.success === true && reqRes.request !== undefined, 'Send Friend Request (User A -> User B)');
 
-  const reqDup = sendRequest(testUserA, testUserB);
+  const reqDup = await sendRequest(testUserA, testUserB);
   assert(reqDup.success === false, 'Prevent Duplicate Pending Request');
 
-  const incoming = getIncomingRequests(testUserB);
+  const incoming = await getIncomingRequests(testUserB);
   assert(incoming.some((r) => r.fromUser === testUserA), 'Fetch Incoming Requests for User B');
 
-  const sent = getSentRequests(testUserA);
+  const sent = await getSentRequests(testUserA);
   assert(sent.some((r) => r.toUser === testUserB), 'Fetch Sent Requests for User A');
 
   // Accept Request
   if (incoming.length > 0) {
-    const accepted = respondToRequest(incoming[0].id, 'accepted');
+    const accepted = await respondToRequest(incoming[0].id, 'accepted');
     assert(accepted === true, 'Accept Friend Request');
   }
 
-  const friendsA = getFriendsOf(testUserA);
-  const isFriends = areFriends(testUserA, testUserB);
+  const friendsA = await getFriendsOf(testUserA);
+  const isFriends = await areFriends(testUserA, testUserB);
   assert(isFriends && friendsA.includes(testUserB), 'Verify Mutual Friendship');
 
   // --- 3. MESSAGES DB QA TESTS ---
   console.log('\n📌 3. Testing Direct Messaging Layer');
 
-  const msg1 = addMessage(testUserA, testUserB, 'Hello from QA test A!');
+  const msg1 = await addMessage(testUserA, testUserB, 'Hello from QA test A!');
   assert(msg1.fromUser === testUserA && msg1.toUser === testUserB, 'Send DM Message 1');
 
-  const msg2 = addMessage(testUserB, testUserA, 'Hello back from QA test B!');
+  const msg2 = await addMessage(testUserB, testUserA, 'Hello back from QA test B!');
   assert(msg2.fromUser === testUserB && msg2.toUser === testUserA, 'Send DM Message 2');
 
   // Unread Count Check for User B
-  const unreadCountsB = getUnreadCounts(testUserB);
+  const unreadCountsB = await getUnreadCounts(testUserB);
   assert(unreadCountsB[testUserA] >= 1, 'Unread Message Count for Recipient');
 
   // Read Conversation & Auto-Mark Read
-  const conv = getConversation(testUserA, testUserB, testUserB);
+  const conv = await getConversation(testUserA, testUserB, testUserB);
   assert(conv.length >= 2, 'Retrieve Conversation');
   assert(conv.some((m) => m.id === msg1.id && m.read === true), 'Auto-Mark Incoming Message as Read');
 
   // Emoji Reactions
-  const reacted = toggleReaction(msg1.id, testUserB, '👍');
+  const reacted = await toggleReaction(msg1.id, testUserB, '👍');
   assert(
     reacted !== null &&
       reacted.reactions !== undefined &&
@@ -122,22 +121,22 @@ async function runQATests() {
   console.log('\n📌 4. Testing Cleanup & User Deletion Cascade');
 
   // Clear Conversation
-  clearConversation(testUserA, testUserB);
-  const convAfterClear = getConversation(testUserA, testUserB);
+  await clearConversation(testUserA, testUserB);
+  const convAfterClear = await getConversation(testUserA, testUserB);
   assert(convAfterClear.length === 0, 'Clear Conversation');
 
   // Delete User Cascade
-  const deletedA = deleteUser(testUserA);
-  deleteAllMessagesForUser(testUserA);
-  deleteAllRequestsForUser(testUserA);
+  const deletedA = await deleteUser(testUserA);
+  await deleteAllMessagesForUser(testUserA);
+  await deleteAllRequestsForUser(testUserA);
 
-  const deletedB = deleteUser(testUserB);
-  deleteAllMessagesForUser(testUserB);
-  deleteAllRequestsForUser(testUserB);
+  const deletedB = await deleteUser(testUserB);
+  await deleteAllMessagesForUser(testUserB);
+  await deleteAllRequestsForUser(testUserB);
 
   assert(deletedA && deletedB, 'Delete Test User Accounts');
 
-  const postFriendsA = getFriendsOf(testUserA);
+  const postFriendsA = await getFriendsOf(testUserA);
   assert(postFriendsA.length === 0, 'Cascade Delete Friend Requests');
 
   console.log(`\n📊 QA Test Results: ${passed} Passed, ${failed} Failed.`);

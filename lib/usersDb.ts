@@ -1,5 +1,4 @@
-import fs from 'fs';
-import { getWritableFilePath } from './dbHelper';
+import { readJsonData, writeJsonData } from './dbHelper';
 
 export interface UserRecord {
   username: string;
@@ -9,38 +8,24 @@ export interface UserRecord {
   statusMsg?: string;
 }
 
-let cachedUsers: UserRecord[] | null = null;
-let lastMtime = 0;
+const DEFAULT_USERS: UserRecord[] = [
+  {
+    username: 'admin',
+    pin: '1234',
+    role: 'admin',
+    createdAt: '2026-08-23T00:00:00.000Z',
+    statusMsg: 'System Administrator',
+  },
+];
 
-function ensureDbExists(): UserRecord[] {
-  const dataFilePath = getWritableFilePath('users.json');
+async function ensureDbExists(): Promise<UserRecord[]> {
   try {
-    if (!fs.existsSync(dataFilePath)) {
-      const initial: UserRecord[] = [
-        {
-          username: 'admin',
-          pin: '1234',
-          role: 'admin',
-          createdAt: new Date().toISOString(),
-          statusMsg: 'System Administrator',
-        },
-      ];
-      fs.writeFileSync(dataFilePath, JSON.stringify(initial, null, 2), 'utf-8');
-      cachedUsers = initial;
-      try { lastMtime = fs.statSync(dataFilePath).mtimeMs; } catch {}
-      return initial;
+    const parsed = await readJsonData<UserRecord[]>('users.json', DEFAULT_USERS);
+    if (!parsed || parsed.length === 0) {
+      await writeJsonData('users.json', DEFAULT_USERS);
+      return DEFAULT_USERS;
     }
 
-    let mtimeMs = 0;
-    try { mtimeMs = fs.statSync(dataFilePath).mtimeMs; } catch {}
-
-    if (cachedUsers && mtimeMs === lastMtime && mtimeMs > 0) {
-      return cachedUsers;
-    }
-
-    const content = fs.readFileSync(dataFilePath, 'utf-8');
-    const parsed: UserRecord[] = JSON.parse(content);
-    
     let updated = false;
     const normalized = parsed.map((u) => {
       const isAdmin = u.username.toLowerCase() === 'admin';
@@ -51,28 +36,23 @@ function ensureDbExists(): UserRecord[] {
     });
 
     if (updated) {
-      fs.writeFileSync(dataFilePath, JSON.stringify(normalized, null, 2), 'utf-8');
-      try { lastMtime = fs.statSync(dataFilePath).mtimeMs; } catch {}
-    } else {
-      lastMtime = mtimeMs;
+      await writeJsonData('users.json', normalized);
     }
 
-    cachedUsers = normalized;
     return normalized;
   } catch (error) {
     console.error('Error reading users database:', error);
-    return cachedUsers || [];
+    return DEFAULT_USERS;
   }
 }
 
-export function getUsers(): UserRecord[] {
-  return ensureDbExists();
+export async function getUsers(): Promise<UserRecord[]> {
+  return await ensureDbExists();
 }
 
-export function saveUser(username: string, pin: string): { success: boolean; user?: UserRecord; error?: string } {
-  const users = ensureDbExists();
+export async function saveUser(username: string, pin: string): Promise<{ success: boolean; user?: UserRecord; error?: string }> {
+  const users = await ensureDbExists();
   const lowerName = username.toLowerCase();
-  const dataFilePath = getWritableFilePath('users.json');
   
   const existing = users.find((u) => u.username.toLowerCase() === lowerName);
   if (existing) {
@@ -89,14 +69,12 @@ export function saveUser(username: string, pin: string): { success: boolean; use
   };
 
   users.push(newUser);
-  fs.writeFileSync(dataFilePath, JSON.stringify(users, null, 2), 'utf-8');
-  cachedUsers = users;
-  try { lastMtime = fs.statSync(dataFilePath).mtimeMs; } catch {}
+  await writeJsonData('users.json', users);
   return { success: true, user: newUser };
 }
 
-export function validateUser(username: string, pin: string): UserRecord | null {
-  const users = ensureDbExists();
+export async function validateUser(username: string, pin: string): Promise<UserRecord | null> {
+  const users = await ensureDbExists();
   const lowerName = username.toLowerCase();
   const found = users.find(
     (u) => u.username.toLowerCase() === lowerName && u.pin === pin
@@ -104,24 +82,20 @@ export function validateUser(username: string, pin: string): UserRecord | null {
   return found || null;
 }
 
-export function updateUserStatus(username: string, statusMsg: string): boolean {
-  const users = ensureDbExists();
+export async function updateUserStatus(username: string, statusMsg: string): Promise<boolean> {
+  const users = await ensureDbExists();
   const lowerName = username.toLowerCase();
-  const dataFilePath = getWritableFilePath('users.json');
   const user = users.find((u) => u.username.toLowerCase() === lowerName);
   if (!user) return false;
 
   user.statusMsg = statusMsg;
-  fs.writeFileSync(dataFilePath, JSON.stringify(users, null, 2), 'utf-8');
-  cachedUsers = users;
-  try { lastMtime = fs.statSync(dataFilePath).mtimeMs; } catch {}
+  await writeJsonData('users.json', users);
   return true;
 }
 
-export function deleteUser(username: string): boolean {
-  const users = ensureDbExists();
+export async function deleteUser(username: string): Promise<boolean> {
+  const users = await ensureDbExists();
   const lowerName = username.toLowerCase();
-  const dataFilePath = getWritableFilePath('users.json');
   
   if (lowerName === 'admin') {
     return false;
@@ -132,8 +106,6 @@ export function deleteUser(username: string): boolean {
     return false;
   }
 
-  fs.writeFileSync(dataFilePath, JSON.stringify(filtered, null, 2), 'utf-8');
-  cachedUsers = filtered;
-  try { lastMtime = fs.statSync(dataFilePath).mtimeMs; } catch {}
+  await writeJsonData('users.json', filtered);
   return true;
 }

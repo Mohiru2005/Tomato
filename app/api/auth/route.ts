@@ -17,7 +17,7 @@ export async function POST(request: Request) {
     const cleanPin = String(pin).trim();
 
     if (action === 'signup') {
-      const result = saveUser(cleanUser, cleanPin);
+      const result = await saveUser(cleanUser, cleanPin);
       if (!result.success) {
         return NextResponse.json({ success: false, error: result.error }, { status: 400 });
       }
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
         user: { username: cleanUser, role: result.user?.role },
       });
     } else {
-      const user = validateUser(cleanUser, cleanPin);
+      const user = await validateUser(cleanUser, cleanPin);
       if (!user) {
         return NextResponse.json(
           { success: false, error: 'Invalid User or PIN.' },

@@ -1,5 +1,4 @@
-import fs from 'fs';
-import { getWritableFilePath } from './dbHelper';
+import { readJsonData, writeJsonData } from './dbHelper';
 
 export interface ChatMessage {
   id: string;
@@ -11,47 +10,16 @@ export interface ChatMessage {
   reactions?: { emoji: string; users: string[] }[];
 }
 
-let cachedMessages: ChatMessage[] | null = null;
-let lastMtime = 0;
-
-function ensureDbExists(): ChatMessage[] {
-  const dataFilePath = getWritableFilePath('messages.json');
-  try {
-    if (!fs.existsSync(dataFilePath)) {
-      fs.writeFileSync(dataFilePath, '[]', 'utf-8');
-      cachedMessages = [];
-      try { lastMtime = fs.statSync(dataFilePath).mtimeMs; } catch {}
-      return [];
-    }
-
-    let mtimeMs = 0;
-    try { mtimeMs = fs.statSync(dataFilePath).mtimeMs; } catch {}
-
-    if (cachedMessages && mtimeMs === lastMtime && mtimeMs > 0) {
-      return cachedMessages;
-    }
-
-    const content = fs.readFileSync(dataFilePath, 'utf-8');
-    const parsed: ChatMessage[] = JSON.parse(content);
-    cachedMessages = parsed;
-    lastMtime = mtimeMs;
-    return parsed;
-  } catch {
-    return cachedMessages || [];
-  }
+async function ensureDbExists(): Promise<ChatMessage[]> {
+  return await readJsonData<ChatMessage[]>('messages.json', []);
 }
 
-function save(messages: ChatMessage[]) {
-  const dataFilePath = getWritableFilePath('messages.json');
-  fs.writeFileSync(dataFilePath, JSON.stringify(messages, null, 2), 'utf-8');
-  cachedMessages = messages;
-  try {
-    lastMtime = fs.statSync(dataFilePath).mtimeMs;
-  } catch {}
+async function save(messages: ChatMessage[]): Promise<void> {
+  await writeJsonData('messages.json', messages);
 }
 
-export function getConversation(userA: string, userB: string, currentReader?: string): ChatMessage[] {
-  const messages = ensureDbExists();
+export async function getConversation(userA: string, userB: string, currentReader?: string): Promise<ChatMessage[]> {
+  const messages = await ensureDbExists();
   const a = userA.toLowerCase();
   const b = userB.toLowerCase();
   const reader = currentReader?.toLowerCase();
@@ -70,14 +38,14 @@ export function getConversation(userA: string, userB: string, currentReader?: st
   });
 
   if (modified) {
-    save(messages);
+    await save(messages);
   }
 
   return conversation;
 }
 
-export function addMessage(fromUser: string, toUser: string, text: string): ChatMessage {
-  const messages = ensureDbExists();
+export async function addMessage(fromUser: string, toUser: string, text: string): Promise<ChatMessage> {
+  const messages = await ensureDbExists();
   const newMsg: ChatMessage = {
     id: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
     fromUser,
@@ -88,12 +56,12 @@ export function addMessage(fromUser: string, toUser: string, text: string): Chat
     reactions: [],
   };
   messages.push(newMsg);
-  save(messages);
+  await save(messages);
   return newMsg;
 }
 
-export function toggleReaction(messageId: string, username: string, emoji: string): ChatMessage | null {
-  const messages = ensureDbExists();
+export async function toggleReaction(messageId: string, username: string, emoji: string): Promise<ChatMessage | null> {
+  const messages = await ensureDbExists();
   const msg = messages.find((m) => m.id === messageId);
   if (!msg) return null;
 
@@ -116,12 +84,12 @@ export function toggleReaction(messageId: string, username: string, emoji: strin
     msg.reactions.push({ emoji, users: [username] });
   }
 
-  save(messages);
+  await save(messages);
   return msg;
 }
 
-export function clearConversation(userA: string, userB: string): boolean {
-  const messages = ensureDbExists();
+export async function clearConversation(userA: string, userB: string): Promise<boolean> {
+  const messages = await ensureDbExists();
   const a = userA.toLowerCase();
   const b = userB.toLowerCase();
   const filtered = messages.filter(
@@ -131,21 +99,21 @@ export function clearConversation(userA: string, userB: string): boolean {
         (m.fromUser.toLowerCase() === b && m.toUser.toLowerCase() === a)
       )
   );
-  save(filtered);
+  await save(filtered);
   return true;
 }
 
-export function deleteAllMessagesForUser(username: string): void {
-  const messages = ensureDbExists();
+export async function deleteAllMessagesForUser(username: string): Promise<void> {
+  const messages = await ensureDbExists();
   const lower = username.toLowerCase();
   const filtered = messages.filter(
     (m) => m.fromUser.toLowerCase() !== lower && m.toUser.toLowerCase() !== lower
   );
-  save(filtered);
+  await save(filtered);
 }
 
-export function getConversationPartners(username: string): string[] {
-  const messages = ensureDbExists();
+export async function getConversationPartners(username: string): Promise<string[]> {
+  const messages = await ensureDbExists();
   const lower = username.toLowerCase();
   const partners = new Set<string>();
   for (const m of messages) {
@@ -155,8 +123,8 @@ export function getConversationPartners(username: string): string[] {
   return Array.from(partners);
 }
 
-export function getUnreadCounts(username: string): Record<string, number> {
-  const messages = ensureDbExists();
+export async function getUnreadCounts(username: string): Promise<Record<string, number>> {
+  const messages = await ensureDbExists();
   const lower = username.toLowerCase();
   const counts: Record<string, number> = {};
 

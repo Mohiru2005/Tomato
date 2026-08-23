@@ -12,23 +12,21 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const type = searchParams.get('type');
 
-  // Return conversation partners
   if (type === 'partners') {
     const user = searchParams.get('user');
     if (!user) {
       return NextResponse.json({ success: false, error: 'user param required.' }, { status: 400 });
     }
-    const partners = getConversationPartners(user);
+    const partners = await getConversationPartners(user);
     return NextResponse.json({ success: true, partners });
   }
 
-  // Return unread counts map { [partner]: unreadCount }
   if (type === 'unread') {
     const user = searchParams.get('user');
     if (!user) {
       return NextResponse.json({ success: false, error: 'user param required.' }, { status: 400 });
     }
-    const counts = getUnreadCounts(user);
+    const counts = await getUnreadCounts(user);
     return NextResponse.json({ success: true, unread: counts });
   }
 
@@ -40,7 +38,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ success: false, error: 'userA and userB params required.' }, { status: 400 });
   }
 
-  const messages = getConversation(userA, userB, reader);
+  const messages = await getConversation(userA, userB, reader);
   return NextResponse.json({ success: true, messages });
 }
 
@@ -53,7 +51,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'fromUser, toUser and text required.' }, { status: 400 });
     }
 
-    const newMessage = addMessage(fromUser.trim(), toUser.trim(), text.trim());
+    const newMessage = await addMessage(fromUser.trim(), toUser.trim(), text.trim());
     return NextResponse.json({ success: true, message: newMessage });
   } catch {
     return NextResponse.json({ success: false, error: 'Failed to send message.' }, { status: 500 });
@@ -69,7 +67,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ success: false, error: 'messageId, username, and emoji required.' }, { status: 400 });
     }
 
-    const updated = toggleReaction(messageId, username, emoji);
+    const updated = await toggleReaction(messageId, username, emoji);
     if (!updated) {
       return NextResponse.json({ success: false, error: 'Message not found.' }, { status: 404 });
     }
@@ -87,7 +85,7 @@ export async function DELETE(request: Request) {
     if (!userA || !userB) {
       return NextResponse.json({ success: false, error: 'userA and userB required.' }, { status: 400 });
     }
-    clearConversation(userA, userB);
+    await clearConversation(userA, userB);
     return NextResponse.json({ success: true, message: 'Conversation cleared.' });
   } catch {
     return NextResponse.json({ success: false, error: 'Internal server error.' }, { status: 500 });

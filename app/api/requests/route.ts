@@ -8,7 +8,6 @@ import {
   getFriendsOf,
 } from '@/lib/requestsDb';
 
-// GET: fetch requests/friends for a user
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const username = searchParams.get('user');
@@ -19,23 +18,22 @@ export async function GET(request: Request) {
   }
 
   if (type === 'friends') {
-    const friends = getFriendsOf(username);
+    const friends = await getFriendsOf(username);
     return NextResponse.json({ success: true, friends });
   }
   if (type === 'incoming') {
-    const incoming = getIncomingRequests(username);
+    const incoming = await getIncomingRequests(username);
     return NextResponse.json({ success: true, requests: incoming });
   }
   if (type === 'sent') {
-    const sent = getSentRequests(username);
+    const sent = await getSentRequests(username);
     return NextResponse.json({ success: true, requests: sent });
   }
 
-  const all = getRequests();
+  const all = await getRequests();
   return NextResponse.json({ success: true, requests: all });
 }
 
-// POST: send a friend request
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -43,7 +41,7 @@ export async function POST(request: Request) {
     if (!fromUser || !toUser) {
       return NextResponse.json({ success: false, error: 'fromUser and toUser required.' }, { status: 400 });
     }
-    const result = sendRequest(fromUser.trim(), toUser.trim());
+    const result = await sendRequest(fromUser.trim(), toUser.trim());
     if (!result.success) {
       return NextResponse.json({ success: false, error: result.error }, { status: 400 });
     }
@@ -53,7 +51,6 @@ export async function POST(request: Request) {
   }
 }
 
-// PATCH: accept or reject a request
 export async function PATCH(request: Request) {
   try {
     const body = await request.json();
@@ -61,7 +58,7 @@ export async function PATCH(request: Request) {
     if (!id || !status) {
       return NextResponse.json({ success: false, error: 'id and status required.' }, { status: 400 });
     }
-    const ok = respondToRequest(id, status);
+    const ok = await respondToRequest(id, status);
     if (!ok) {
       return NextResponse.json({ success: false, error: 'Request not found.' }, { status: 404 });
     }
