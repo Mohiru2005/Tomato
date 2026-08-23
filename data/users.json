@@ -1,9 +1,0 @@
-[
-  {
-    "username": "admin",
-    "pin": "1234",
-    "role": "admin",
-    "createdAt": "2026-08-23T00:00:00.000Z",
-    "statusMsg": "System Administrator"
-  }
-]

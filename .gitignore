@@ -3,6 +3,9 @@
 /.pnp
 .pnp.js
 
+# data storage (prevent git push from resetting live server database files)
+data/*.json
+
 # testing
 /coverage
 
