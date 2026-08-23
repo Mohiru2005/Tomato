@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { Lock, User, Eye, EyeOff, ArrowRight, Sparkles } from 'lucide-react';
+import { Lock, User, Eye, EyeOff, ArrowRight, Sparkles, CheckCircle2 } from 'lucide-react';
 
 export default function AuthForm() {
   const router = useRouter();
@@ -13,16 +13,20 @@ export default function AuthForm() {
   const [username, setUsername] = useState('');
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setError('');
+    setSuccessMsg('');
+
     if (!username.trim() || !pin.trim()) {
       setError('Please enter both User and PIN.');
       return;
     }
     setLoading(true);
+
     try {
       const res = await fetch('/api/auth', {
         method: 'POST',
@@ -31,15 +35,32 @@ export default function AuthForm() {
       });
       const data = await res.json();
       setLoading(false);
+
       if (!res.ok || !data.success) {
+        // If user already exists on signup, automatically switch to login mode with credentials prefilled
+        if (activeTab === 'signup' && data.error?.includes('already exists')) {
+          setActiveTab('login');
+          setError('User already exists! Switched to Log In mode. Click Log In to continue.');
+          return;
+        }
         setError(data.error || 'Authentication failed.');
         return;
       }
+
+      if (activeTab === 'signup') {
+        setSuccessMsg('Account created successfully! Redirecting...');
+      } else {
+        setSuccessMsg('Login successful! Redirecting...');
+      }
+
       if (typeof window !== 'undefined') {
         localStorage.setItem('tomato_org_user', username.trim());
         localStorage.setItem('tomato_org_role', data.user?.role || 'user');
       }
-      router.push('/dashboard');
+
+      setTimeout(() => {
+        router.push('/dashboard');
+      }, 500);
     } catch {
       setLoading(false);
       setError('Network error. Failed to connect.');
@@ -76,7 +97,7 @@ export default function AuthForm() {
             <button
               key={tab}
               type="button"
-              onClick={() => { setActiveTab(tab); setError(''); setUsername(''); setPin(''); }}
+              onClick={() => { setActiveTab(tab); setError(''); setSuccessMsg(''); setUsername(''); setPin(''); }}
               className={`relative flex-1 py-2.5 text-sm font-bold text-center rounded-xl transition-colors duration-150 z-10 ${
                 activeTab === tab ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
               }`}
@@ -86,7 +107,7 @@ export default function AuthForm() {
           ))}
         </div>
 
-        {/* Error */}
+        {/* Error Notification */}
         <AnimatePresence mode="wait">
           {error && (
             <motion.div
@@ -97,6 +118,22 @@ export default function AuthForm() {
               className="mb-4 text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-50/80 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-900 rounded-xl p-3 text-center"
             >
               {error}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Success Notification */}
+        <AnimatePresence mode="wait">
+          {successMsg && (
+            <motion.div
+              key={successMsg}
+              initial={{ opacity: 0, y: -8, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.97 }}
+              className="mb-4 text-xs font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50/80 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-900 rounded-xl p-3 text-center flex items-center justify-center gap-2"
+            >
+              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+              <span>{successMsg}</span>
             </motion.div>
           )}
         </AnimatePresence>
