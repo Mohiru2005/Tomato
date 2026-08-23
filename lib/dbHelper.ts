@@ -80,9 +80,13 @@ export async function readJsonData<T>(filename: string, defaultValue: T): Promis
         .from('tomato_store')
         .select('content')
         .eq('id', id)
-        .single();
-      if (!error && data && data.content) {
+        .maybeSingle();
+
+      if (data && data.content) {
         return typeof data.content === 'string' ? JSON.parse(data.content) : (data.content as T);
+      }
+      if (!error) {
+        return defaultValue;
       }
     } catch (err) {
       console.warn('Failed to read from Supabase:', err);
@@ -127,9 +131,12 @@ export async function writeJsonData<T>(filename: string, data: T): Promise<void>
   const supabase = getSupabaseClient();
   if (supabase) {
     try {
-      await supabase
+      const { error } = await supabase
         .from('tomato_store')
         .upsert({ id, content: data }, { onConflict: 'id' });
+      if (error) {
+        console.warn('Supabase upsert warning:', error.message);
+      }
     } catch (err) {
       console.warn('Failed to write to Supabase:', err);
     }
