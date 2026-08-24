@@ -181,7 +181,11 @@ export default function DirectChat({ currentUser, partnerUser, onBack }: DirectC
       await fetchMessages();
     } finally {
       setSending(false);
-      inputRef.current?.focus();
+      if (typeof window !== 'undefined' && window.innerWidth < 768) {
+        inputRef.current?.blur();
+      } else {
+        inputRef.current?.focus();
+      }
     }
   };
 
@@ -299,7 +303,10 @@ export default function DirectChat({ currentUser, partnerUser, onBack }: DirectC
         </motion.div>
 
         {/* Messages Area */}
-        <div className="flex-1 overflow-y-auto px-4 py-5 space-y-3">
+        <div
+          onClick={() => inputRef.current?.blur()}
+          className="flex-1 overflow-y-auto px-4 py-5 space-y-3"
+        >
           <AnimatePresence initial={false}>
             {messages.length === 0 ? (
               <motion.div
