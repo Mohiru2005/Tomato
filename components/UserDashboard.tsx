@@ -244,8 +244,8 @@ export default function UserDashboard({ username }: UserDashboardProps) {
         {toast && <Toast key="toast" message={toast.message} type={toast.type} />}
       </AnimatePresence>
 
-      {/* ── Mobile Top Header ── */}
-      <div className="md:hidden flex items-center justify-between px-4 py-3 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-b border-rose-100/60 dark:border-slate-800 z-30">
+      {/* ── Mobile Top Header (Hidden when inside chat) ── */}
+      <div className={`md:hidden ${chatPartner ? 'hidden' : 'flex'} items-center justify-between px-4 py-3 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-b border-rose-100/60 dark:border-slate-800 z-30`}>
         <motion.button
           type="button"
           onClick={handleLogout}
@@ -380,8 +380,8 @@ export default function UserDashboard({ username }: UserDashboardProps) {
         </div>
       </motion.div>
 
-      {/* ── Mobile Bottom Navigation Bar ── */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-rose-100/60 dark:border-slate-800 flex items-center justify-around px-2 py-2 shadow-lg">
+      {/* ── Mobile Bottom Navigation Bar (Hidden when inside chat) ── */}
+      <div className={`md:hidden ${chatPartner ? 'hidden' : 'flex'} fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-rose-100/60 dark:border-slate-800 items-center justify-around px-2 py-2 shadow-lg`}>
         {navItems.map((item) => (
           <button
             key={item.id}
@@ -407,7 +407,7 @@ export default function UserDashboard({ username }: UserDashboardProps) {
       </div>
 
       {/* ── Main View Area ── */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden pb-16 md:pb-0">
+      <div className={`flex-1 flex flex-col min-w-0 overflow-hidden ${chatPartner ? 'pb-0' : 'pb-16 md:pb-0'}`}>
         <AnimatePresence mode="wait">
 
           {/* ── PROFILE ── */}

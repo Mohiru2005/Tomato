@@ -290,7 +290,7 @@ export default function DirectChat({ currentUser, partnerUser, onBack }: DirectC
               onClick={handleLogout}
               whileHover={{ scale: 1.08 }}
               whileTap={{ scale: 0.92 }}
-              className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-slate-800 rounded-xl transition-colors"
+              className="hidden sm:flex p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-slate-800 rounded-xl transition-colors"
               title="Log Out"
             >
               <LogOut className="w-4 h-4 text-red-500" />
