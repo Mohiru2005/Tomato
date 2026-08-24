@@ -90,7 +90,7 @@ export default function DirectChat({ currentUser, partnerUser, onBack }: DirectC
   const [activeReactionMsgId, setActiveReactionMsgId] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const prevCountRef = useRef(0);
 
@@ -156,8 +156,8 @@ export default function DirectChat({ currentUser, partnerUser, onBack }: DirectC
     reader.readAsDataURL(file);
   };
 
-  const handleSend = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSend = async (e?: React.SyntheticEvent) => {
+    if (e) e.preventDefault();
     if ((!inputText.trim() && !attachment) || sending) return;
 
     const text = inputText.trim();
@@ -457,9 +457,7 @@ export default function DirectChat({ currentUser, partnerUser, onBack }: DirectC
         </AnimatePresence>
 
         {/* Input bar */}
-        <motion.form
-          onSubmit={handleSend}
-          autoComplete="off"
+        <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           className="flex items-center gap-2 px-4 py-3 border-t border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl flex-shrink-0 relative"
@@ -519,31 +517,29 @@ export default function DirectChat({ currentUser, partnerUser, onBack }: DirectC
           </button>
 
           <div className="flex-1 relative">
-            <input
+            <textarea
               ref={inputRef}
-              type="text"
-              name="message"
-              id="message"
-              autoComplete="off"
-              autoCorrect="off"
-              autoCapitalize="sentences"
-              spellCheck={false}
-              data-form-type="other"
-              data-lpignore="true"
-              data-1p-ignore="true"
+              rows={1}
               placeholder={`Message ${displayPartnerName}...`}
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSend();
+                }
+              }}
               onFocus={() => {
                 scrollToBottom(true);
                 setTimeout(() => scrollToBottom(true), 250);
               }}
-              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-medium text-slate-800 dark:text-slate-100 focus:outline-none focus:border-rose-400 focus:ring-4 focus:ring-rose-100/60 dark:focus:ring-rose-950/60 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500"
+              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-medium text-slate-800 dark:text-slate-100 focus:outline-none focus:border-rose-400 focus:ring-4 focus:ring-rose-100/60 dark:focus:ring-rose-950/60 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500 resize-none overflow-hidden"
             />
           </div>
 
           <motion.button
-            type="submit"
+            type="button"
+            onClick={handleSend}
             disabled={(!inputText.trim() && !attachment) || sending}
             whileHover={{ scale: 1.08 }}
             whileTap={{ scale: 0.9 }}
@@ -555,7 +551,7 @@ export default function DirectChat({ currentUser, partnerUser, onBack }: DirectC
               <Send className="w-4 h-4" />
             )}
           </motion.button>
-        </motion.form>
+        </motion.div>
       </div>
 
       {/* ── Tomato Right-Side Drawer (Shared Media & Theme Color Switcher) ── */}
