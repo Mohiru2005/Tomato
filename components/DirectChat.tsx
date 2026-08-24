@@ -459,6 +459,7 @@ export default function DirectChat({ currentUser, partnerUser, onBack }: DirectC
         {/* Input bar */}
         <motion.form
           onSubmit={handleSend}
+          autoComplete="off"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           className="flex items-center gap-2 px-4 py-3 border-t border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl flex-shrink-0 relative"
@@ -521,6 +522,15 @@ export default function DirectChat({ currentUser, partnerUser, onBack }: DirectC
             <input
               ref={inputRef}
               type="text"
+              name="message"
+              id="message"
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="sentences"
+              spellCheck={false}
+              data-form-type="other"
+              data-lpignore="true"
+              data-1p-ignore="true"
               placeholder={`Message ${displayPartnerName}...`}
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
