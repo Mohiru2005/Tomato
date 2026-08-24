@@ -239,7 +239,7 @@ export default function UserDashboard({ username }: UserDashboardProps) {
   ];
 
   return (
-    <div className="flex flex-col md:flex-row h-screen bg-gradient-to-br from-rose-50 via-white to-pink-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 transition-colors overflow-hidden">
+    <div className="flex flex-col md:flex-row h-[100dvh] md:h-screen bg-gradient-to-br from-rose-50 via-white to-pink-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 transition-colors overflow-hidden">
       <AnimatePresence>
         {toast && <Toast key="toast" message={toast.message} type={toast.type} />}
       </AnimatePresence>

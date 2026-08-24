@@ -218,7 +218,7 @@ export default function DirectChat({ currentUser, partnerUser, onBack }: DirectC
   const sharedMedia = messages.filter((m) => m.attachment);
 
   return (
-    <div className="flex h-full bg-gradient-to-b from-slate-50 to-white dark:from-slate-950 dark:to-slate-900 transition-colors relative overflow-hidden">
+    <div className="flex h-[100dvh] md:h-full bg-gradient-to-b from-slate-50 to-white dark:from-slate-950 dark:to-slate-900 transition-colors relative overflow-hidden">
       
       {/* Central Chat View */}
       <div className="flex-1 flex flex-col min-w-0 h-full">
@@ -517,6 +517,10 @@ export default function DirectChat({ currentUser, partnerUser, onBack }: DirectC
               placeholder={`Message ${displayPartnerName}...`}
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
+              onFocus={() => {
+                scrollToBottom(true);
+                setTimeout(() => scrollToBottom(true), 250);
+              }}
               className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-medium text-slate-800 dark:text-slate-100 focus:outline-none focus:border-rose-400 focus:ring-4 focus:ring-rose-100/60 dark:focus:ring-rose-950/60 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500"
             />
           </div>
